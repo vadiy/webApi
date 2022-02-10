@@ -73,3 +73,4 @@ if __name__ == '__main__':
     httpd = HTTPServer((address, port), HttpHandler)
     print('HTTPServer started => {}:{}'.format(address, port))
     httpd.serve_forever()
+    print('HTTPServer had shutdown...')
