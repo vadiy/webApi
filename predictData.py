@@ -147,7 +147,7 @@ def predict_batch(data):
         val = 1
     else:
         val = 0
-    log_print('the result predict val is {} val = {} pval = {}'.format(val, bval, pval))
+    log_print('the result predict val is {} bval = {} pval = {}'.format(val, bval, pval))
     return v
 
 
@@ -204,7 +204,7 @@ def predict(label, data):
         val = 1
     else:
         val = 0
-    log_print('the result predict val is {} val = {} pval = {}'.format(val, bval, pval))
+    log_print('the result predict val is {} bval = {} pval = {}'.format(val, bval, pval))
     return v
 
 
@@ -251,8 +251,7 @@ if __name__ == '__main__':
     # %%
     data = [[-3.150000095367, 2], [-2.75, 2], [-2.25, 2], [-0.5, 1], [-0.75, 1], [-1.350000023842, 2],
             [-1.016666650772, 2], [0.383333325386, 1], [-0.1166666895151, 2], [0.04999997466803, 1],
-            [-0.3500000238419, 1], [-0.6000000238419, 2], [-0.1000000461936, 2], [0.7333332896233, 1],
-            [-0.6666666865349, 2]]
+            [-0.3500000238419, 1], [-0.6000000238419, 2], [-0.1000000461936, 2]]
     #%%
     v = predict_batch(data)
     print(v)
