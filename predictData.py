@@ -96,13 +96,13 @@ def init():
 
 # %%
 """
-predict data and return a val.
+predict batch data and return a batch val.
 """
 
 
-# %%
-def predict(data):
+def predict_batch(data):
     totalTime = int(time.time() * 1000)
+    v = {"label": [], "data": []}
     bval = 0
     pval = 0
     val = 0
@@ -124,20 +124,22 @@ def predict(data):
                     predictVal = sc.inverse_transform(predictVal)
                     predictVal = predictVal[0][0]
                     realVal = predictTest[-1][0]
-                    print('predict data:{:.6f}'.format(predictVal))
-                    print('real data:{:.6f}'.format(realVal))
+
                     if label != 'label':
                         val = 'P' if predictVal < realVal else 'B'
                     else:
                         val = 'P' if predictVal > 1.5 else 'B'
+                    v[label].append([num, 1 if val == 'B' else 2])
                     if val == 'P':
                         pval += 1
                     else:
                         bval += 1
-                    print('predict result {} from {} {}'.format(val, label, num))
+                    log_print('predict data:{:.6f}'.format(predictVal))
+                    log_print('real data:{:.6f}'.format(realVal))
+                    log_print('predict result {} from {} {}'.format(val, label, num))
                 else:
-                    print('model is None {} {}'.format(label, num))
-    print('had use time {} ms to predict data'.format(int(time.time() * 1000) - totalTime))
+                    log_print('model is None {} {}'.format(label, num))
+    log_print('had use time {} ms to predict data'.format(int(time.time() * 1000) - totalTime))
 
     if pval > bval:
         val = 2
@@ -145,8 +147,71 @@ def predict(data):
         val = 1
     else:
         val = 0
-    print('the result predict val is {}'.format(val))
-    return val
+    log_print('the result predict val is {} val = {} pval = {}'.format(val, bval, pval))
+    return v
+
+
+# %%
+
+"""
+predict data and return a val.
+"""
+
+
+def predict(label, data):
+    totalTime = int(time.time() * 1000)
+    v = {"label": [], "data": []}
+    bval = 0
+    pval = 0
+    val = 0
+    if data != None:
+        dataLen = len(data) if len(data) < len(model_nums) + model_nums_offset else len(model_nums) + model_nums_offset
+        # start num from 3 to 15
+        num = dataLen
+        x_vs, x_ws = getPreDataArray(data, lastNum=num)
+        model = models_data.get(num) if label != 'label' else models_label.get(num)
+        if model != None:
+            predictTest = x_vs if label != 'label' else x_ws
+            predictTest = predictTest[-1]
+            sc = MinMaxScaler(feature_range=(0, 1))
+            predictVal = sc.fit_transform(predictTest)
+            predictVal = np.reshape(predictVal, (1, predictVal.shape[0], 1))
+            predictVal = model.predict(predictVal)
+            predictVal = sc.inverse_transform(predictVal)
+            predictVal = predictVal[0][0]
+            realVal = predictTest[-1][0]
+
+            if label != 'label':
+                val = 'P' if predictVal < realVal else 'B'
+            else:
+                val = 'P' if predictVal > 1.5 else 'B'
+            v[label].append([num, 1 if val == 'B' else 2])
+            if val == 'P':
+                pval += 1
+            else:
+                bval += 1
+            log_print('predict data:{:.6f}'.format(predictVal))
+            log_print('real data:{:.6f}'.format(realVal))
+            log_print('predict result {} from {} {}'.format(val, label, num))
+        else:
+            log_print('model is None {} {}'.format(label, num))
+
+    log_print('had use time {} ms to predict data'.format(int(time.time() * 1000) - totalTime))
+
+    if pval > bval:
+        val = 2
+    elif bval > pval:
+        val = 1
+    else:
+        val = 0
+    log_print('the result predict val is {} val = {} pval = {}'.format(val, bval, pval))
+    return v
+
+
+# %%
+def log_print(txt):
+    if log:
+        print(txt)
 
 
 # %%
@@ -174,14 +239,26 @@ model_nums_offset = 0
 model_dir = '.\predict\predict_{label}_{num}'
 models_data = {}
 models_label = {}
+log = False
 
 # %%
 
 
 if __name__ == '__main__':
+    log = True
     # %%
-    model_nums = [3, 4]
     init()
     # %%
-    val = predict([[0.17, 1], [0.24, 1], [0.42, 1], [0.32, 2], [-0.08, 2], [0.58, 1], [1.75, 1], [1.75, 1.5]])
-    print(val)
+    data = [[-3.150000095367, 2], [-2.75, 2], [-2.25, 2], [-0.5, 1], [-0.75, 1], [-1.350000023842, 2],
+            [-1.016666650772, 2], [0.383333325386, 1], [-0.1166666895151, 2], [0.04999997466803, 1],
+            [-0.3500000238419, 1], [-0.6000000238419, 2], [-0.1000000461936, 2], [0.7333332896233, 1],
+            [-0.6666666865349, 2]]
+    #%%
+    v = predict_batch(data)
+    print(v)
+    #%%
+    v = predict('label', data)
+    print(v)
+    #%%
+    v = predict('data', data)
+    print(v)

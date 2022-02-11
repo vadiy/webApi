@@ -43,7 +43,11 @@ class HttpHandler(BaseHTTPRequestHandler):
                     rtv['m'] = 'Success'
                     data = args_json.get('data')
                     print(len(data))
-                    preVal = predictData.predict(data)
+                    lebal = args_json.get('label')
+                    if lebal ==None:
+                        preVal = predictData.predict_batch(data)
+                    else:
+                        preVal = predictData.predict(lebal,data)
                     rtv['v'] = preVal
                 else:
                     rtv['m'] = 'Missing parameter("cmd":"predict")'
