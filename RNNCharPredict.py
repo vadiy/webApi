@@ -1,5 +1,6 @@
 import os
 
+import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.layers import Dense, SimpleRNN
@@ -51,17 +52,37 @@ history = model.fit(x_train, y_train, batch_size=32, epochs=100, callbacks=[cp_c
 
 model.summary()
 
-#%%
+# %%
+# 显示训练集和验证集的acc 和 loss 曲线
+acc = history.history['sparse_categorical_accuracy']
+loss = history.history['loss']
+
+plt.subplot(1, 2, 1)
+plt.plot(acc, label='Training Accuracy')
+plt.title('Training Accuracy')
+plt.legend()
+
+plt.subplot(1, 2, 2)
+plt.plot(loss, label='Training loss')
+plt.title('Training loss')
+plt.legend()
+plt.show()
+
+# %%
 ####################predict#########################
 # 执行前向传播
 preNum = int(input('input the number of test alphabet:'))
 for i in range(preNum):
     alphabet1 = input('input test alphabet:')
-    alphabet = [id_to_onehot[w_to_id[alphabet1]]]
+    alphabet = []
+    for a in range(0, len(alphabet1)):
+        alphabet = [id_to_onehot[w_to_id[alphabet1[a]]]]
+
+    # alphabet = [id_to_onehot[w_to_id[alphabet1]]]
     # 使alphabet符合SimpleRNN输入要求:[送入样本数,循环核时间展开步数,每个时间步输入特征个数].
     # 此处验证效果送入了1个样本,送入样本数为1,输入1个字母出结果,所以循环核时间展开步数为1.
     # 表示为独热码有5个输入特征,每个时间步输入特征个数为5
-    alphabet = np.reshape(alphabet, (1, 1, 5))
+    alphabet = np.reshape(alphabet, (1, len(alphabet), 5))
     result = model.predict([alphabet])
     pred = tf.argmax(result, axis=1)
     pred = int(pred)

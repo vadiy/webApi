@@ -4,6 +4,7 @@ import os,re
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import tensorflow as tf
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras import Sequential, callbacks
 from tensorflow.keras.layers import SimpleRNN, Dropout, Dense
@@ -142,37 +143,45 @@ def trainBAC(model, x_train, y_train, x_test, y_test, checkpoint_save_path):
     return model, history
 
     # %%
-
-
+def model_load(modelPath):
+    model = None
+    if os.path.exists(modelPath):
+        model = tf.keras.models.load_model(modelPath)
+    return model
+#%%
 def train():
     # 7 17 37 77 157 317
-    nums = [3, 4, 5, 6,7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 19, 20, 21, 22, 23, 24]
-    nums = [4,5,6]
+    nums = [3, 4, 5, 6,7, 8, 9, 10, 11, 12, 13, 14, 15]
     labels = ['data', 'label']
     starDate = 20220111
     onlyOnce = True
-    for num in nums:
-        for label in labels:
-            checkpoint_save_path = './checkpoint/predict_' + label + '_' + str(num) + '.ckpt'
-            modeldir = 'predict/predict_' + label + '_' + str(num)
-            model = create_model(checkpoint_save_path)
-            subfolder = searchSubfolder('./AGBigData')
-            for folder in subfolder:
-                file_list = searchFile('./AGBigData/' + folder + '/', file_type='R_.(.*).txt$')
-                fullDataSet = None
-                fn = 0
-                for file in file_list:
-                    if starDate <= int(file.split('.')[0].split('_')[2]):
-                        filepath = './AGBigData/' + folder + '/' + file
-                        print(filepath)
-                        dataset = getDataSet(filepath)
-                        if fullDataSet is not None:
-                            fullDataSet = pd.concat([dataset, fullDataSet], ignore_index=True)
-                        else:
-                            fullDataSet = dataset
-                        fn += 1
-                        if fn >= 3:
-                            break
+    subfolder = searchSubfolder('./AGBigData')
+    for folder in subfolder:
+        file_list = searchFile('./AGBigData/' + folder + '/', file_type='R_.(.*).txt$')
+        fullDataSet = None
+        fn = 0
+        for file in file_list:
+            if starDate <= int(file.split('.')[0].split('_')[2]):
+                filepath = './AGBigData/' + folder + '/' + file
+                print(filepath)
+                dataset = getDataSet(filepath)
+                if fullDataSet is not None:
+                    fullDataSet = pd.concat([dataset, fullDataSet], ignore_index=True)
+                else:
+                    fullDataSet = dataset
+                fn += 1
+                if fn >= 3:
+                    # break
+                    pass
+
+        for num in nums:
+            for label in labels:
+                checkpoint_save_path = './checkpoint/predict_' + label + '_' + str(num) + '.ckpt'
+                modeldir = 'predict/predict_' + label + '_' + str(num)
+                model = model_load(modeldir)
+                if model == None:
+                    model = create_model(checkpoint_save_path)
+
                 if fullDataSet is not None:
                     print(len(fullDataSet))
                     sc, train_set, test_set = sliceDataSet(fullDataSet)
@@ -191,10 +200,14 @@ def train():
                     plt.title('Trianing and Validation Loss ' + label + '_' + str(num) + ' folder:' + folder)
                     plt.legend()
                     plt.show()
-                if onlyOnce == True:
-                    break
+        if onlyOnce == True:
+            break
 
-# %%
+
+
+
+
+                    # %%
 """
 search subfolder
 """
