@@ -1,5 +1,6 @@
 # %%
-import os,re
+import os
+import re
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -7,7 +8,7 @@ import pandas as pd
 import tensorflow as tf
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras import Sequential, callbacks
-from tensorflow.keras.layers import SimpleRNN, Dropout, Dense
+from tensorflow.keras.layers import SimpleRNN, Dropout, Dense, LSTM
 from tensorflow.keras.optimizers import Adam
 
 
@@ -99,14 +100,22 @@ def sliceDataSet(da):
 
 
 # %%
-def create_model(checkpoint_save_path):
+def create_model(checkpoint_save_path,layer = 'RNN'):
     # 用squential搭建神经网络
     model = Sequential()
-    model.add(SimpleRNN(80, return_sequences=True))
-    model.add(Dropout(0.2))
-    model.add(SimpleRNN(100))
-    model.add(Dropout(0.2))
-    model.add(Dense(1))
+    if layer == 'RNN':
+        model.add(SimpleRNN(80, return_sequences=True))
+        model.add(Dropout(0.2))
+        model.add(SimpleRNN(100))
+        model.add(Dropout(0.2))
+        model.add(Dense(1))
+    elif layer == 'LSTM':
+        model.add(LSTM(80, return_sequences=True))
+        model.add(Dropout(0.2))
+        model.add(LSTM(100))
+        model.add(Dropout(0.2))
+        model.add(Dense(1))
+
     # cmopile 配置训练方法使用adam优化器
     model.compile(optimizer=Adam(0.001),
                   # 损失函数用均方误差,不可有多余参数,如果有必要设置完,
@@ -137,21 +146,24 @@ def trainBAC(model, x_train, y_train, x_test, y_test, checkpoint_save_path):
                         callbacks=[cp_callback]
                         )
 
-
     # model.summary()
 
     return model, history
 
     # %%
+
+
 def model_load(modelPath):
     model = None
     if os.path.exists(modelPath):
         model = tf.keras.models.load_model(modelPath)
     return model
-#%%
-def train():
+
+
+# %%
+def train(layer='RNN'):
     # 7 17 37 77 157 317
-    nums = [3, 4, 5, 6,7, 8, 9, 10, 11, 12, 13, 14, 15]
+    nums = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
     labels = ['data', 'label']
     starDate = 20220111
     onlyOnce = True
@@ -176,11 +188,11 @@ def train():
 
         for num in nums:
             for label in labels:
-                checkpoint_save_path = './checkpoint/predict_' + label + '_' + str(num) + '.ckpt'
-                modeldir = 'predict/predict_' + label + '_' + str(num)
+                checkpoint_save_path = './checkpoint/' + layer + '/predict_' +  label + '_' + str(num) + '.ckpt'
+                modeldir = 'predict/' + layer + '/predict_' + label + '_' + str(num)
                 model = model_load(modeldir)
                 if model == None:
-                    model = create_model(checkpoint_save_path)
+                    model = create_model(checkpoint_save_path, layer=layer)
 
                 if fullDataSet is not None:
                     print(len(fullDataSet))
@@ -197,17 +209,16 @@ def train():
 
                     plt.plot(loss, label='Trianing Loss')
                     plt.plot(val_loss, label='Validation Loss')
-                    plt.title('Trianing and Validation Loss ' + label + '_' + str(num) + ' folder:' + folder)
+                    plt.title(
+                        'Trianing and Validation Loss ' + layer + '_' + label + '_' + str(num) + ' folder:' + folder)
                     plt.legend()
                     plt.show()
         if onlyOnce == True:
             break
 
+            # %%
 
 
-
-
-                    # %%
 """
 search subfolder
 """
@@ -220,14 +231,18 @@ def searchSubfolder(path):
         break
     return folder_list
 
-def searchFile(file_dir,file_type='*.*'):
+
+def searchFile(file_dir, file_type='*.*'):
     file_list = []
-    for root,dirs,files in os.walk(file_dir):
+    for root, dirs, files in os.walk(file_dir):
         for f in files:
-            if re.search(file_type,f):
+            if re.search(file_type, f):
                 file_list.append(f)
 
     return file_list
+
+
 if __name__ == '__main__':
     # %%
-    train()
+    layer = 'LSTM'
+    train(layer)

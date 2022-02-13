@@ -51,20 +51,23 @@ def init():
     global model_labels
     global model_nums
     global model_nums_offset
-    global models_data
-    global models_label
+    global models
+    global model_layers
 
     print('predict init ...')
-    folder_list = searchSubfolder('.\predict')
-    for folder in folder_list:
-        print(folder)
-        fs = folder.split('_')
-        if len(fs) == 3:
-            if fs[0] == 'predict':
-                if not fs[1] in model_labels:
-                    model_labels.append(fs[1])
-                if not int(fs[2]) in model_nums:
-                    model_nums.append(int(fs[2]))
+    layer_list = searchSubfolder('.\\predict')
+    for layer in layer_list:
+        print(layer)
+        if layer in model_layers:
+            folder_list = searchSubfolder('.\\predict\\{layer}'.format(layer=layer))
+            for folder in folder_list:
+                fs = folder.split('_')
+                if len(fs) == 3:
+                    if fs[0] == 'predict':
+                        if not fs[1] in model_labels:
+                            model_labels.append(fs[1])
+                        if not int(fs[2]) in model_nums:
+                            model_nums.append(int(fs[2]))
 
     model_labels.sort()
     model_nums.sort()
@@ -77,20 +80,19 @@ def init():
     print('model_nums_offset {}'.format(model_nums_offset))
 
     totalTime = int(time.time() * 1000)
-    for num in model_nums:
+    for layer in model_layers:
         for label in model_labels:
-            modeldir = model_dir.format(label=label, num=num)
-            t = int(time.time() * 1000)
-            print('start to load model {} ...'.format(modeldir))
-            model = load(modeldir)
-            if model != None:
-                if label == 'label':
-                    models_label[num] = model
+            for num in model_nums:
+                modeldir = model_dir.format(layer=layer, label=label, num=num)
+                t = int(time.time() * 1000)
+                print('start to load model {} ...'.format(modeldir))
+                model = load(modeldir)
+                if model != None:
+                    models[layer][label][num] = model
+                    print('success to load model {}...use time {} ms'.format(modeldir, int(time.time() * 1000) - t))
                 else:
-                    models_data[num] = model
-                print('success to load model {}...use time {} ms'.format(modeldir, int(time.time() * 1000) - t))
-            else:
-                print('fail to load model {}...use time {} ms'.format(modeldir, int(time.time() * 1000) - t))
+                    print('fail to load model {}...use time {} ms'.format(modeldir, int(time.time() * 1000) - t))
+
     print('had use time {} ms to pre import models'.format(int(time.time() * 1000) - totalTime))
 
 
@@ -102,7 +104,7 @@ predict batch data and return a batch val.
 
 def predict_batch(data):
     totalTime = int(time.time() * 1000)
-    v = {"label": [], "data": []}
+    v = {'RNN': {"label": [], "data": []}, 'LSTM': {"label": [], "data": []}}
     bval = 0
     pval = 0
     val = 0
@@ -112,33 +114,37 @@ def predict_batch(data):
         for num in range(model_nums_offset, dataLen):
             num = num + 1
             x_vs, x_ws = getPreDataArray(data, lastNum=num)
-            for label in model_labels:
-                model = models_data.get(num) if label != 'label' else models_label.get(num)
-                if model != None:
-                    predictTest = x_vs if label != 'label' else x_ws
-                    predictTest = predictTest[-1]
-                    sc = MinMaxScaler(feature_range=(0, 1))
-                    predictVal = sc.fit_transform(predictTest)
-                    predictVal = np.reshape(predictVal, (1, predictVal.shape[0], 1))
-                    predictVal = model.predict(predictVal)
-                    predictVal = sc.inverse_transform(predictVal)
-                    predictVal = predictVal[0][0]
-                    realVal = predictTest[-1][0]
+            for layer in model_layers:
+                for label in model_labels:
+                    model = models[layer][label].get(num)
+                    if model != None:
+                        predictTest = x_vs if label != 'label' else x_ws
+                        predictTest = predictTest[-1]
+                        sc = MinMaxScaler(feature_range=(0, 1))
+                        predictVal = sc.fit_transform(predictTest)
+                        predictVal = np.reshape(predictVal, (1, predictVal.shape[0], 1))
+                        predictVal = model.predict(predictVal)
+                        preVal = predictVal[0][0]
+                        predictVal = sc.inverse_transform(predictVal)
+                        predictVal = predictVal[0][0]
+                        realVal = predictTest[-1][0]
 
-                    if label != 'label':
-                        val = 'P' if predictVal < realVal else 'B'
+                        if label != 'label':
+                            val = 'P' if predictVal < realVal else 'B'
+                        else:
+                            realVal = preVal
+                            val = 'P' if preVal > 1.5 else 'B'
+                        v[layer][label].append([num, 1 if val == 'B' else 2])
+                        if val == 'P':
+                            pval += 1
+                        else:
+                            bval += 1
+                        log_print('predict {} {}:{:.6f}'.format(layer, label, predictVal))
+                        log_print('real {} {}:{:.6f}'.format(layer, label, realVal))
+                        log_print('predict {} result {} from {} {}'.format(layer, val, label, num))
                     else:
-                        val = 'P' if predictVal > 1.5 else 'B'
-                    v[label].append([num, 1 if val == 'B' else 2])
-                    if val == 'P':
-                        pval += 1
-                    else:
-                        bval += 1
-                    log_print('predict data:{:.6f}'.format(predictVal))
-                    log_print('real data:{:.6f}'.format(realVal))
-                    log_print('predict result {} from {} {}'.format(val, label, num))
-                else:
-                    log_print('model is None {} {}'.format(label, num))
+                        log_print('model is None {} {} {}'.format(layer, label, num))
+
     log_print('had use time {} ms to predict data'.format(int(time.time() * 1000) - totalTime))
 
     if pval > bval:
@@ -158,9 +164,9 @@ predict data and return a val.
 """
 
 
-def predict(label, data):
+def predict(data, layer='RNN', label='data'):
     totalTime = int(time.time() * 1000)
-    v = {"label": [], "data": []}
+    v = {'RNN': {"label": [], "data": []}, 'LSTM': {"label": [], "data": []}}
     bval = 0
     pval = 0
     val = 0
@@ -169,32 +175,36 @@ def predict(label, data):
         # start num from 3 to 15
         num = dataLen
         x_vs, x_ws = getPreDataArray(data, lastNum=num)
-        model = models_data.get(num) if label != 'label' else models_label.get(num)
-        if model != None:
-            predictTest = x_vs if label != 'label' else x_ws
-            predictTest = predictTest[-1]
-            sc = MinMaxScaler(feature_range=(0, 1))
-            predictVal = sc.fit_transform(predictTest)
-            predictVal = np.reshape(predictVal, (1, predictVal.shape[0], 1))
-            predictVal = model.predict(predictVal)
-            predictVal = sc.inverse_transform(predictVal)
-            predictVal = predictVal[0][0]
-            realVal = predictTest[-1][0]
+        if layer in model_layers:
+            if label in model_labels:
+                model = models[layer][label].get(num)
+                if model != None:
+                    predictTest = x_vs if label != 'label' else x_ws
+                    predictTest = predictTest[-1]
+                    sc = MinMaxScaler(feature_range=(0, 1))
+                    predictVal = sc.fit_transform(predictTest)
+                    predictVal = np.reshape(predictVal, (1, predictVal.shape[0], 1))
+                    predictVal = model.predict(predictVal)
+                    preVal = predictVal[0][0]
+                    predictVal = sc.inverse_transform(predictVal)
+                    predictVal = predictVal[0][0]
+                    realVal = predictTest[-1][0]
 
-            if label != 'label':
-                val = 'P' if predictVal < realVal else 'B'
-            else:
-                val = 'P' if predictVal > 1.5 else 'B'
-            v[label].append([num, 1 if val == 'B' else 2])
-            if val == 'P':
-                pval += 1
-            else:
-                bval += 1
-            log_print('predict data:{:.6f}'.format(predictVal))
-            log_print('real data:{:.6f}'.format(realVal))
-            log_print('predict result {} from {} {}'.format(val, label, num))
-        else:
-            log_print('model is None {} {}'.format(label, num))
+                    if label != 'label':
+                        val = 'P' if predictVal < realVal else 'B'
+                    else:
+                        realVal = preVal
+                        val = 'P' if preVal > 1.5 else 'B'
+                    v[layer][label].append([num, 1 if val == 'B' else 2])
+                    if val == 'P':
+                        pval += 1
+                    else:
+                        bval += 1
+                    log_print('predict {} {}:{:.6f}'.format(layer, label, predictVal))
+                    log_print('real {} {}:{:.6f}'.format(layer, label, realVal))
+                    log_print('predict {} result {} from {} {}'.format(layer, val, label, num))
+                else:
+                    log_print('model is None {} {} {}'.format(layer, label, num))
 
     log_print('had use time {} ms to predict data'.format(int(time.time() * 1000) - totalTime))
 
@@ -230,15 +240,17 @@ def searchSubfolder(path):
 
 # %%
 model_labels = ['label', 'data']
+model_layers = ['RNN', 'LSTM']
 model_nums = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
 model_nums_offset = 2
 # auto search
-model_labels = []
-model_nums = []
+
+models = {'RNN': {'label': {}, 'data': {}}, 'LSTM': {'label': {}, 'data': {}}}
+
 model_nums_offset = 0
-model_dir = '.\predict\predict_{label}_{num}'
-models_data = {}
-models_label = {}
+model_dir = '.\\predict\\{layer}\\predict_{label}_{num}'
+models_RNN_data = {}
+models_RNN_label = {}
 log = False
 
 # %%
@@ -252,12 +264,18 @@ if __name__ == '__main__':
     data = [[-3.150000095367, 2], [-2.75, 2], [-2.25, 2], [-0.5, 1], [-0.75, 1], [-1.350000023842, 2],
             [-1.016666650772, 2], [0.383333325386, 1], [-0.1166666895151, 2], [0.04999997466803, 1],
             [-0.3500000238419, 1], [-0.6000000238419, 2], [-0.1000000461936, 2]]
-    #%%
+    # %%
     v = predict_batch(data)
     print(v)
-    #%%
-    v = predict('label', data)
+    # %%
+    v = predict(data, 'RNN', 'label')
     print(v)
-    #%%
-    v = predict('data', data)
+    # %%
+    v = predict(data, 'RNN', 'data')
+    print(v)
+    # %%
+    v = predict(data, 'LSTM', 'label')
+    print(v)
+    # %%
+    v = predict(data, 'LSTM', 'data')
     print(v)

@@ -2,6 +2,7 @@ import json
 import urllib
 import urllib.parse
 from http.server import HTTPServer, BaseHTTPRequestHandler
+
 import predictData
 
 
@@ -43,11 +44,14 @@ class HttpHandler(BaseHTTPRequestHandler):
                     rtv['m'] = 'Success'
                     data = args_json.get('data')
                     print(len(data))
-                    lebal = args_json.get('label')
-                    if lebal ==None:
+                    label = args_json.get('label')
+                    layer = args_json.get('layer')
+                    if layer == None:
                         preVal = predictData.predict_batch(data)
+                    elif(label != None):
+                        preVal = predictData.predict(data, layer, label)
                     else:
-                        preVal = predictData.predict(lebal,data)
+                        preVal = predictData.predict(data, layer)
                     rtv['v'] = preVal
                 else:
                     rtv['m'] = 'Missing parameter("cmd":"predict")'
