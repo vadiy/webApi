@@ -166,7 +166,7 @@ def train(layer='RNN'):
     nums = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
     labels = ['data', 'label']
     starDate = 20220111
-    onlyOnce = True
+    onlyOnce = False
     subfolder = searchSubfolder('./AGBigData')
     for folder in subfolder:
         file_list = searchFile('./AGBigData/' + folder + '/', file_type='R_.(.*).txt$')
