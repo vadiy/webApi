@@ -163,15 +163,18 @@ def model_load(modelPath):
 
 
 # %%
-def train(layer='RNN'):
+def train():
     # 7 17 37 77 157 317
     nums = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
     labels = ['data', 'label']
+    layers = ['RNN','LSTM']
     starDate = 20220111
     onlyOnce = False
     subfolder = searchSubfolder('./AGBigData')
+    subfolder.sort()
     for folder in subfolder:
         file_list = searchFile('./AGBigData/' + folder + '/', file_type='R_.(.*).txt$')
+        file_list.sort()
         fullDataSet = None
         fn = 0
         for file in file_list:
@@ -187,38 +190,40 @@ def train(layer='RNN'):
                 if fn >= 3:
                     # break
                     pass
+        if fullDataSet is not None:
+            for layer in layers:
+                for num in nums:
+                    for label in labels:
+                        checkpoint_save_path = './checkpoint/' + layer + '/predict_' +  label + '_' + str(num) + '.ckpt'
+                        modeldir = 'predict/' + layer + '/predict_' + label + '_' + str(num)
+                        model = model_load(modeldir)
+                        if model == None:
+                            model = create_model(checkpoint_save_path, layer=layer)
 
-        for num in nums:
-            for label in labels:
-                checkpoint_save_path = './checkpoint/' + layer + '/predict_' +  label + '_' + str(num) + '.ckpt'
-                modeldir = 'predict/' + layer + '/predict_' + label + '_' + str(num)
-                model = model_load(modeldir)
-                if model == None:
-                    model = create_model(checkpoint_save_path, layer=layer)
+                        if fullDataSet is not None:
+                            print(len(fullDataSet))
+                            sc, train_set, test_set = sliceDataSet(fullDataSet)
+                            x_train, y_train = getDataArray(train_set, random=True, num=num, label=label)
+                            x_test, y_test = getDataArray(test_set, random=False, num=num, label=label)
 
-                if fullDataSet is not None:
-                    print(len(fullDataSet))
-                    sc, train_set, test_set = sliceDataSet(fullDataSet)
-                    x_train, y_train = getDataArray(train_set, random=True, num=num, label=label)
-                    x_test, y_test = getDataArray(test_set, random=False, num=num, label=label)
+                            model, history = trainBAC(model, x_train, y_train, x_test, y_test, checkpoint_save_path)
 
-                    model, history = trainBAC(model, x_train, y_train, x_test, y_test, checkpoint_save_path)
+                            model.save(modeldir)
+                            # loss可视化
+                            loss = history.history['loss']
+                            val_loss = history.history['val_loss']
 
-                    model.save(modeldir)
-                    # loss可视化
-                    loss = history.history['loss']
-                    val_loss = history.history['val_loss']
+                            plt.plot(loss, label='Trianing Loss')
+                            plt.plot(val_loss, label='Validation Loss')
+                            plt.title(
+                                'Trianing and Validation Loss ' + layer + '_' + label + '_' + str(num) + ' folder:' + folder)
+                            plt.legend()
+                            plt.show()
+                if onlyOnce == True:
+                    break
 
-                    plt.plot(loss, label='Trianing Loss')
-                    plt.plot(val_loss, label='Validation Loss')
-                    plt.title(
-                        'Trianing and Validation Loss ' + layer + '_' + label + '_' + str(num) + ' folder:' + folder)
-                    plt.legend()
-                    plt.show()
-        if onlyOnce == True:
-            break
+                    # %%
 
-            # %%
 
 
 """
@@ -245,9 +250,8 @@ def searchFile(file_dir, file_type='*.*'):
 
 epochs=20
 
-batch_size = 32
+batch_size = 64
 
 if __name__ == '__main__':
     # %%
-    layer = 'LSTM'
-    train(layer)
+    train()
