@@ -100,7 +100,7 @@ def sliceDataSet(da):
 
 
 # %%
-def create_model(checkpoint_save_path,layer = 'RNN'):
+def create_model(checkpoint_save_path, layer='RNN'):
     # 用squential搭建神经网络
     model = Sequential()
     if layer == 'RNN':
@@ -134,7 +134,7 @@ def create_model(checkpoint_save_path,layer = 'RNN'):
 # %%
 
 def trainBAC(model, x_train, y_train, x_test, y_test, checkpoint_save_path):
-    global epochs,batch_size
+    global epochs, batch_size
     cp_callback = callbacks.ModelCheckpoint(filepath=checkpoint_save_path,
                                             save_weights_only=True,
                                             save_best_only=True,
@@ -165,9 +165,9 @@ def model_load(modelPath):
 # %%
 def train():
     # 7 17 37 77 157 317
-    nums = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    nums = [3, 5, 7, 11, 13]
     labels = ['data', 'label']
-    layers = ['RNN','LSTM']
+    layers = ['RNN', 'LSTM']
     starDate = 20220111
     onlyOnce = False
     subfolder = searchSubfolder('./AGBigData')
@@ -194,7 +194,7 @@ def train():
             for layer in layers:
                 for num in nums:
                     for label in labels:
-                        checkpoint_save_path = './checkpoint/' + layer + '/predict_' +  label + '_' + str(num) + '.ckpt'
+                        checkpoint_save_path = './checkpoint/' + layer + '/predict_' + label + '_' + str(num) + '.ckpt'
                         modeldir = 'predict/' + layer + '/predict_' + label + '_' + str(num)
                         model = model_load(modeldir)
                         if model == None:
@@ -216,14 +216,14 @@ def train():
                             plt.plot(loss, label='Trianing Loss')
                             plt.plot(val_loss, label='Validation Loss')
                             plt.title(
-                                'Trianing and Validation Loss ' + layer + '_' + label + '_' + str(num) + ' folder:' + folder)
+                                'Trianing and Validation Loss ' + layer + '_' + label + '_' + str(
+                                    num) + ' folder:' + folder)
                             plt.legend()
                             plt.show()
                 if onlyOnce == True:
                     break
 
                     # %%
-
 
 
 """
@@ -248,7 +248,8 @@ def searchFile(file_dir, file_type='*.*'):
 
     return file_list
 
-epochs=20
+
+epochs = 24
 
 batch_size = 64
 
