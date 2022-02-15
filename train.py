@@ -132,15 +132,17 @@ def create_model(checkpoint_save_path,layer = 'RNN'):
 
 
 # %%
+
 def trainBAC(model, x_train, y_train, x_test, y_test, checkpoint_save_path):
+    global epochs,batch_size
     cp_callback = callbacks.ModelCheckpoint(filepath=checkpoint_save_path,
                                             save_weights_only=True,
                                             save_best_only=True,
                                             monitor='val_loss')
     # fit 执行训练过程
     history = model.fit(x_train, y_train,
-                        batch_size=64,
-                        epochs=50,
+                        batch_size=batch_size,
+                        epochs=epochs,
                         validation_data=(x_test, y_test),
                         validation_freq=1,
                         callbacks=[cp_callback]
@@ -241,6 +243,9 @@ def searchFile(file_dir, file_type='*.*'):
 
     return file_list
 
+epochs=20
+
+batch_size = 32
 
 if __name__ == '__main__':
     # %%
